@@ -1,0 +1,3 @@
+dut_name,A,B,Cin,S,Cout,predicted_bin_score,actual_bin,closes_gap
+4bit_adder_CRV,0,0,0,0,0,1.09,"zero_result,no_carry",True
+4bit_adder_CRV,15,15,1,15,1,29.51,"max_result,carry",True
