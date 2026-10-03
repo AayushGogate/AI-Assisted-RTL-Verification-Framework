@@ -73,7 +73,22 @@ def adder4bit_ref(r):
     r["Cout"] = (s >> 4) & 1
     return r
 
+def dff_bin(r):
+    if r["reset"] == 1:
+        return "reset_active"
+    elif r["D"] == 0:
+        return "reset_inactive_D0"
+    else:
+        return "reset_inactive_D1"
+
+def dff_ref(r):
+    r["Q"] = 0 if r["reset"] == 1 else r["D"]
+    return r
+
 CONFIG = {
+    "d_flip_flop":      {"inputs": {"D": (0,1), "reset": (0,1)},
+                         "bin_fn": dff_bin, "ref_fn": dff_ref,
+                         "numeric_target_fn": None},
     "mux_2to1":         {"inputs": {"A": (0,1), "B": (0,1), "S": (0,1)},
                           "bin_fn": mux2to1_bin, "ref_fn": mux2to1_ref,
                           "numeric_target_fn": None},

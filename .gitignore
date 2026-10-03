@@ -1,0 +1,11 @@
+# Simulation files
+*.vvp
+
+# Generated verification results
+**/data/results.csv
+**/data/results_crv.csv
+
+# Generated datasets
+data/combined_dataset.csv
+data/combined_dataset_labeled.csv
+data/phase6_recommendations.csv
