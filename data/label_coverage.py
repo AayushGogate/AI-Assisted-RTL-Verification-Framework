@@ -46,6 +46,14 @@ def label_row(row):
         else:
             return "unknown"
 
+    elif dut == "d_flip_flop":
+        if int(row["reset"]) == 1:
+            return "reset_active"
+        elif int(row["D"]) == 0:
+            return "reset_inactive_D0"
+        else:
+            return "reset_inactive_D1"
+
     return "unlabeled"
 
 df["coverage_bin"] = df.apply(label_row, axis=1)

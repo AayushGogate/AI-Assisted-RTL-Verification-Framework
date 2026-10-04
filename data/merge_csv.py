@@ -3,6 +3,7 @@ import os
 
 # path -> dut_name
 files = {
+    "verification_sequential/d_flip_flop/data/results.csv": "d_flip_flop",
     "verification/mux_2to1/data/results.csv":        "mux_2to1",
     "verification/mux_4to1/data/results.csv":        "mux_4to1",
     "verification/full_adder/data/results.csv":      "full_adder",
