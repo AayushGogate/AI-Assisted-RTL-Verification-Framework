@@ -1,0 +1,7 @@
+{
+  "dut_name": "pipo",
+  "unique_vectors": 152,
+  "val_accuracy": 0.947,
+  "val_precision": 1.0,
+  "val_recall": 0.5
+}

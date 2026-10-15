@@ -1,0 +1,7 @@
+{
+  "dut_name": "barrel_shifter_8bit",
+  "unique_vectors": 79,
+  "val_accuracy": 0.95,
+  "val_precision": 0.0,
+  "val_recall": 0.0
+}

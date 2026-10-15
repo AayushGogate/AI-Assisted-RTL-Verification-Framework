@@ -1,0 +1,7 @@
+{
+  "dut_name": "sr_flip_flop",
+  "unique_vectors": 21,
+  "val_accuracy": 0.667,
+  "val_precision": 0.5,
+  "val_recall": 0.5
+}

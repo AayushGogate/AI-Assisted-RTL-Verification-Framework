@@ -1,0 +1,7 @@
+{
+  "dut_name": "adder_subtractor_4bit",
+  "unique_vectors": 56,
+  "val_accuracy": 0.929,
+  "val_precision": 0.0,
+  "val_recall": 0.0
+}

@@ -1,0 +1,7 @@
+{
+  "dut_name": "comparator_4bit",
+  "unique_vectors": 37,
+  "val_accuracy": 0.9,
+  "val_precision": 0.0,
+  "val_recall": 0.0
+}

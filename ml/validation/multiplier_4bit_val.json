@@ -1,0 +1,7 @@
+{
+  "dut_name": "multiplier_4bit",
+  "unique_vectors": 37,
+  "val_accuracy": 0.7,
+  "val_precision": 0.0,
+  "val_recall": 0.0
+}
