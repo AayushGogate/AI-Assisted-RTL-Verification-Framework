@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DUT Coverage Analysis Tool | RTL Verification Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation / Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">Δ</div>
+      <div class="brand-title">DUT Coverage Analysis Tool</div>
+      <div class="brand-subtitle">AI-Assisted RTL Verification</div>
+    </div>
+    <div class="header-badges">
+      <span class="badge-tag accent">Functional Coverage (Bin-Based)</span>
+      <span class="badge-tag">Icarus Verilog Verified</span>
+      <span class="badge-tag">Offline Ready</span>
+    </div>
+  </header>
+
+  <!-- Main Body Layout -->
+  <div class="app-body">
+
+    <!-- Left Control Panel / Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="panel-title">1. Select Target DUT</div>
+        <div class="control-group">
+          <label class="control-label" for="dutSelect">Registered Hardware Design</label>
+          <select id="dutSelect">
+            <option value="" disabled selected>Loading registered DUTs...</option>
+          </select>
+          <div id="dutInfoCard" class="dut-info-card" style="display: none;">
+            <div id="dutDesc" style="margin-bottom: 6px; font-weight: 600; color: #fff;"></div>
+            <div id="dutInputs"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-title">2. Testbench Data Source</div>
+        <div class="control-group">
+          <div class="toggle-switch">
+            <div class="toggle-opt active" id="btnModeDemo">Demo Mode (Bundled CSV)</div>
+            <div class="toggle-opt" id="btnModeUpload">Upload Custom CSV</div>
+          </div>
+
+          <div id="uploadCsvGroup" style="display: none; margin-top: 10px;">
+            <label class="control-label">Upload Testbench Results (.csv)</label>
+            <div class="file-dropzone" id="csvDropzone">
+              <span id="csvDropText">Drop CSV here or click to browse</span>
+              <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+            </div>
+            <div class="control-hint" style="margin-top: 4px;">Requires columns matching DUT input ports.</div>
+          </div>
+
+          <div id="demoCsvInfo" class="dut-info-card" style="margin-top: 10px;">
+            <span style="color: var(--accent-cyan); font-weight: 700;">Demo Mode Active:</span>
+            <span id="demoRowsCountText">Loads bundled CRV baseline data.</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-title">3. RTL Module (Optional)</div>
+        <div class="control-group">
+          <label class="control-label">Custom Verilog RTL (.v)</label>
+          <div class="file-dropzone" id="rtlDropzone">
+            <span id="rtlDropText">Bundled RTL used by default (click to override)</span>
+            <input type="file" id="rtlFileInput" accept=".v,.sv" style="display: none;">
+          </div>
+          <div class="control-hint">Bundled RTL is automatically provided for built-in DUTs.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-title">4. Test Budget Subsampling</div>
+        <div class="control-group slider-container">
+          <div class="slider-header">
+            <label class="control-label" for="subsampleSlider">Use First N Tests</label>
+            <span class="slider-val-badge" id="subsampleValBadge">All (100)</span>
+          </div>
+          <input type="range" id="subsampleSlider" min="1" max="100" value="100">
+          <div class="control-hint">Subsample to simulate a restricted test budget and create artificial coverage gaps for what-if evaluation.</div>
+        </div>
+      </div>
+
+      <div>
+        <button id="btnRunAnalyze" class="btn-analyze">
+          <span>Run Coverage Analysis</span>
+          <span>→</span>
+        </button>
+      </div>
+
+      <div class="sidebar-notice">
+        <strong>Verification Scope Notice:</strong> This framework reports <em>functional coverage</em> based on declared input/output bins. Icarus Verilog does not compute line, branch or toggle code coverage. v1 supports combinational input spaces.
+      </div>
+    </aside>
+
+    <!-- Right Main Presentation Panel -->
+    <main class="main-content">
+
+      <!-- Welcome / Empty State Screen -->
+      <section id="welcomeScreen" class="welcome-screen">
+        <div class="welcome-icon">⚡</div>
+        <h1 class="welcome-title">DUT Functional Coverage & AI Gap Closure</h1>
+        <p class="welcome-desc">
+          Constrained-Random Verification (CRV) quickly covers typical behavior but plateaus on rare boundaries.
+          Select a registered design on the left, upload or load real simulation results, and see what ML can do to close coverage gaps.
+        </p>
+
+        <h3 style="font-size: 14px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Or choose a quick demo:</h3>
+        <div class="quick-duts-grid" id="quickDutsGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+      <!-- Loading State Screen -->
+      <section id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <h2 style="font-size: 20px; font-weight: 700; color: #fff;">Analyzing DUT Coverage...</h2>
+        <div class="loading-steps" id="loadingStatusText">1. Parsing and decoding testbench CSV...</div>
+      </section>
+
+      <!-- Report View Screen (Sections 1 through 9) -->
+      <section id="reportContainer" class="report-container">
+
+        <!-- Top Report Header & Action Bar -->
+        <div class="report-header-bar">
+          <div class="report-title-area">
+            <h2 id="reportDutTitle">Analysis Report: mux_2to1</h2>
+            <div id="subsampleProminentBadge" class="subsample-badge-prominent" style="display: none;"></div>
+          </div>
+          <div class="downloads-group">
+            <button class="btn-download" id="btnDownloadReport" title="Save full printable HTML report">
+              📄 Printable Report
+            </button>
+            <button class="btn-download" id="btnDownloadCsv" title="Export candidate tests to CSV">
+              📥 recommended_tests.csv
+            </button>
+            <button class="btn-download" id="btnDownloadJson" title="Export full analysis JSON">
+              💾 analysis.json
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 1: Executive Summary Card -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">1</div>
+            <div class="step-title">Executive Summary</div>
+            <div class="step-subtitle">Baseline Testbench Metrics</div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">DUT Module</div>
+              <div class="stat-value highlight" id="s1DutName">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Tests Analyzed</div>
+              <div class="stat-value" id="s1TestsAnalyzed">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Unique Input Vectors</div>
+              <div class="stat-value" id="s1UniqueVectors">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Input Space Size</div>
+              <div class="stat-value" id="s1InputSpace">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Coverage Bins Hit</div>
+              <div class="stat-value" id="s1BinsHit">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Baseline Coverage %</div>
+              <div class="stat-value highlight" id="s1CoveragePct">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Functional Pass Rate</div>
+              <div class="stat-value hit" id="s1PassRate">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Functional Correctness -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">2</div>
+            <div class="step-title">Functional Correctness</div>
+            <div class="step-subtitle">Logged Simulation Checks</div>
+          </div>
+          <div id="s2CorrectnessContent"></div>
+        </div>
+
+        <!-- STEP 3: Coverage by Bin -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">3</div>
+            <div class="step-title">Functional Coverage by Bin</div>
+            <div class="step-subtitle">Per-Bin Frequency Distribution</div>
+          </div>
+          <div class="chart-container" id="s3ChartContainer">
+            <!-- Inline SVG bar chart injected here -->
+          </div>
+          <div class="table-wrapper" style="margin-top: 14px;">
+            <table class="data-table" id="s3BinsTable">
+              <thead>
+                <tr>
+                  <th>Coverage Bin</th>
+                  <th>Hits Count</th>
+                  <th>% of Total Tests</th>
+                  <th>Status Classification</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- STEP 4: Input-Space Coverage -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">4</div>
+            <div class="step-title">Input-Space Coverage & Balance</div>
+            <div class="step-subtitle">Combinational Domain Sampling</div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">Tested Unique Vectors</div>
+              <div class="stat-value" id="s4TestedVectors">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Untested Vectors Remaining</div>
+              <div class="stat-value" id="s4UntestedVectors">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Domain Coverage %</div>
+              <div class="stat-value" id="s4SpaceCoveragePct">-</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Bin Balance (CV)</div>
+              <div class="stat-value" id="s4BalanceCv">-</div>
+            </div>
+          </div>
+          <div class="control-hint" style="margin-top: 6px;">
+            Coefficient of Variation (CV = σ / μ): Lower values indicate uniform coverage balance across reachable bins.
+          </div>
+        </div>
+
+        <!-- STEP 5: Plain Language Gap Analysis -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">5</div>
+            <div class="step-title">Gap Analysis in Plain Language</div>
+            <div class="step-subtitle">Missing & Under-Covered Conditions</div>
+          </div>
+          <div id="s5NarrativeContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+
+        <!-- STEP 6: AI / Machine Learning Section -->
+        <div class="step-card ai-step" id="s6AiCard">
+          <div class="step-card-header">
+            <div class="step-number">6</div>
+            <div class="step-title">AI-Assisted Candidate Prioritization</div>
+            <span class="ai-stage-badge">AI Stage</span>
+          </div>
+
+          <div id="s6AiNotNeeded" class="callout success" style="display: none;">
+            <strong>No ML Action Needed:</strong> The baseline testbench already achieved 100% functional bin closure with no missing or under-covered bins.
+          </div>
+
+          <div id="s6AiActiveContent" style="display: flex; flex-direction: column; gap: 18px;">
+            <!-- Labelling Rule Callout -->
+            <div class="callout ai">
+              <strong>Supervised Labelling Rule:</strong> Vectors hitting under-covered bins (&lt; 50% mean hits) or missing bins are labelled <code>rare = 1</code>; all others are labelled <code>common = 0</code>.
+            </div>
+
+            <!-- Validation Metrics & Confusion Matrix -->
+            <div id="s6ValidationBlock" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Held-Out Validation Performance</h4>
+                <div class="stats-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                  <div class="stat-item">
+                    <div class="stat-label">Accuracy</div>
+                    <div class="stat-value highlight" id="s6ValAcc">-</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-label">Precision</div>
+                    <div class="stat-value" id="s6ValPrec">-</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-label">Recall</div>
+                    <div class="stat-value" id="s6ValRec">-</div>
+                  </div>
+                </div>
+                <div class="control-hint" style="margin-top: 6px;">
+                  Trained on deduplicated vectors with stratified 75/25 train/validation split (fixed seed = 42).
+                </div>
+              </div>
+
+              <div>
+                <h4 style="font-size: 13px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Predicted vs Actual (Held-Out Data)</h4>
+                <div class="matrix-grid" id="s6ConfusionMatrix">
+                  <div class="matrix-cell header"></div>
+                  <div class="matrix-cell header">Pred Common</div>
+                  <div class="matrix-cell header">Pred Rare</div>
+                  <div class="matrix-cell header" style="text-align: right;">Act Common</div>
+                  <div class="matrix-cell"><span class="val" id="cmTN">0</span></div>
+                  <div class="matrix-cell"><span class="val" id="cmFP">0</span></div>
+                  <div class="matrix-cell header" style="text-align: right;">Act Rare</div>
+                  <div class="matrix-cell"><span class="val" id="cmFN">0</span></div>
+                  <div class="matrix-cell"><span class="val" id="cmTP">0</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="s6ClassifierSkippedBlock" class="callout warning" style="display: none;">
+              <!-- Message if classifier skipped due to 1 class -->
+            </div>
+
+            <!-- Regressor Fallback Callout -->
+            <div id="s6RegressorBlock" class="callout warning" style="display: none;">
+              <strong>RandomForestRegressor Fallback Triggered:</strong>
+              <span id="s6RegressorText"></span>
+            </div>
+
+            <!-- Unreachable Bins Callout -->
+            <div id="s6UnreachableBlock" class="callout warning" style="display: none;">
+              <strong>Unreachable Bins:</strong>
+              <span id="s6UnreachableText"></span>
+            </div>
+
+            <!-- Ranked Candidates Table -->
+            <div>
+              <h4 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 8px;">Model-Ranked Untested Candidates</h4>
+              <div class="table-wrapper">
+                <table class="data-table" id="s6CandidatesTable">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Input Vector</th>
+                      <th>Selection Method</th>
+                      <th>P(Rare) / Metric</th>
+                      <th>Actual Target Bin</th>
+                      <th>Closes Gap?</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="control-hint" style="margin-top: 6px;">
+                Per specification: Candidates are selected purely by model outputs. The reference bin model evaluates them strictly afterwards.
+              </div>
+            </div>
+
+            <!-- Random-Selection Baseline Benchmark -->
+            <div class="comp-box" style="text-align: left; background: var(--bg-card-alt); border-color: rgba(139, 92, 246, 0.3);">
+              <h4 style="font-size: 14px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 6px;">
+                Random-Selection Baseline Comparison
+              </h4>
+              <div id="s6BaselineText" style="font-size: 13px; line-height: 1.5; color: #e2e8f0;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 7: Real RTL Simulation Verification -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">7</div>
+            <div class="step-title">Hardware Simulation Verification</div>
+            <div class="step-subtitle">Real Icarus Verilog Execution</div>
+          </div>
+          <div id="s7RtlStatusArea"></div>
+
+          <div class="collapsible-block">
+            <div class="collapsible-header" id="btnToggleTbCode">
+              <span>View Generated Verilog Testbench Source (tb_ml_verify.v)</span>
+              <span>▼</span>
+            </div>
+            <pre class="collapsible-body" id="s7TbCodeContent"></pre>
+          </div>
+
+          <div class="collapsible-block">
+            <div class="collapsible-header" id="btnToggleSimLog">
+              <span>View Simulator Output Log (vvp stdout)</span>
+              <span>▼</span>
+            </div>
+            <pre class="collapsible-body" id="s7SimLogContent"></pre>
+          </div>
+        </div>
+
+        <!-- STEP 8: Before / After Coverage -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">8</div>
+            <div class="step-title">Coverage Closure Impact</div>
+            <div class="step-subtitle">Before vs After Verification</div>
+          </div>
+          <div class="comparison-container">
+            <div class="comp-box">
+              <div class="stat-label">Baseline CRV Coverage</div>
+              <div class="num" id="s8BeforeCoverage">0.0%</div>
+              <div style="font-size: 13px; color: var(--text-dim);" id="s8BeforeBins">0 / 0 bins</div>
+            </div>
+            <div class="comp-box after">
+              <div class="stat-label">Verified Projected Coverage</div>
+              <div class="num hit" id="s8AfterCoverage">0.0%</div>
+              <div class="comp-delta" id="s8DeltaCoverage">+0.0% Improvement</div>
+              <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;" id="s8AfterBins">0 / 0 bins</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 9: Actionable Recommendations -->
+        <div class="step-card">
+          <div class="step-card-header">
+            <div class="step-number">9</div>
+            <div class="step-title">Actionable Recommendations</div>
+            <div class="step-subtitle">Stimulus to Merge into Testbench</div>
+          </div>
+          <div id="s9RecsContent"></div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

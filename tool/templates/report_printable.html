@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DUT Functional Coverage Verification Report - {{ report.metadata.dut_name }}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.5;
+      color: #1e293b;
+      background: #fff;
+      padding: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1, h2, h3, h4 { color: #0f172a; margin-top: 0; }
+    .header-box {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+    .section-card {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+      page-break-inside: avoid;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0369a1;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stat-badge {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    th { background: #f1f5f9; font-weight: 600; }
+    .code-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      max-height: 250px;
+      overflow-y: auto;
+      border-radius: 4px;
+    }
+    .status-hit { color: #15803d; font-weight: bold; }
+    .status-under { color: #b45309; font-weight: bold; }
+    .status-missing { color: #b91c1c; font-weight: bold; }
+    .callout {
+      background: #f0f9ff;
+      border-left: 4px solid #0284c7;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+    @media print {
+      body { padding: 0; }
+      .code-box { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-box">
+    <h1>RTL Verification & AI Coverage Analysis Report</h1>
+    <p style="font-size: 14px; color: #64748b; margin: 4px 0;">
+      DUT: <strong>{{ report.metadata.dut_name }}</strong> &nbsp;|&nbsp;
+      {{ report.metadata.description }} &nbsp;|&nbsp;
+      Scope: {{ report.metadata.coverage_type }}
+    </p>
+    {% if report.metadata.subsampled_label %}
+    <div style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 4px; display: inline-block; font-size: 12px; font-weight: bold; margin-top: 6px;">
+      {{ report.metadata.subsampled_label }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Step 1: Summary -->
+  <div class="section-card">
+    <div class="section-title">1. Executive Summary</div>
+    <div class="meta-grid">
+      <div>Tests Analyzed: <span class="stat-badge">{{ report.step1_summary.rows_analyzed }}</span></div>
+      <div>Unique Tested Vectors: <span class="stat-badge">{{ report.step1_summary.unique_vectors }}</span></div>
+      <div>Input Space Size: <span class="stat-badge">{{ report.step1_summary.input_space_size }}</span></div>
+      <div>Bins Hit: <span class="stat-badge">{{ report.step1_summary.bins_hit }} / {{ report.step1_summary.total_bins }}</span></div>
+      <div>Baseline Coverage: <span class="stat-badge">{{ report.step1_summary.coverage_pct }}%</span></div>
+      <div>Functional Pass Rate: <span class="stat-badge">{{ report.step1_summary.pass_rate }}%</span></div>
+    </div>
+  </div>
+
+  <!-- Step 2: Correctness -->
+  <div class="section-card">
+    <div class="section-title">2. Functional Correctness</div>
+    <p>Logged Checks: <strong>{{ report.step2_correctness.pass_count }} passed</strong>, <strong>{{ report.step2_correctness.fail_count }} failed</strong> (Pass Rate: {{ report.step2_correctness.pass_rate }}%).</p>
+    {% if report.step2_correctness.failing_rows %}
+    <p style="color: #b91c1c; font-weight: bold;">Failing Tests Encountered:</p>
+    <table>
+      <thead><tr><th>Test #</th><th>Inputs</th><th>Expected Output</th></tr></thead>
+      <tbody>
+        {% for fr in report.step2_correctness.failing_rows %}
+        <tr><td>{{ fr.test_num }}</td><td>{{ fr.inputs }}</td><td>{{ fr.expected }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color: #15803d; font-size: 13px;">✓ Zero functional errors in logged simulation data.</p>
+    {% endif %}
+  </div>
+
+  <!-- Step 3: Coverage by Bin -->
+  <div class="section-card">
+    <div class="section-title">3. Coverage by Bin</div>
+    <table>
+      <thead>
+        <tr><th>Coverage Bin</th><th>Hit Count</th><th>% of Tests</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for b in report.step3_bin_coverage.per_bin_data %}
+        <tr>
+          <td><code>{{ b.bin }}</code></td>
+          <td>{{ b.count }}</td>
+          <td>{{ b.percentage }}%</td>
+          <td class="status-{{ b.status }}">{{ b.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Step 4: Input Space -->
+  <div class="section-card">
+    <div class="section-title">4. Input-Space Coverage</div>
+    <p>Tested <strong>{{ report.step4_input_space.unique_tested }}</strong> unique input combinations out of <strong>{{ report.step4_input_space.total_space }}</strong> total ({{ report.step4_input_space.tested_pct }}% space coverage). Bin balance CV: <strong>{{ report.step4_input_space.balance_cv }}</strong>.</p>
+  </div>
+
+  <!-- Step 5: Gap Analysis -->
+  <div class="section-card">
+    <div class="section-title">5. Gap Analysis</div>
+    {% for n in report.step5_gap_analysis.narratives %}
+    <p style="font-size: 13px; margin-bottom: 6px;">• {{ n }}</p>
+    {% endfor %}
+  </div>
+
+  <!-- Step 6: ML Section -->
+  <div class="section-card">
+    <div class="section-title">6. Machine Learning Coverage Prioritization</div>
+    {% if not report.step6_ml_section.ml_ran %}
+    <p style="color: #15803d;">Fully covered: No ML action required.</p>
+    {% else %}
+    <div class="callout">
+      Labelling Rule: {{ report.step6_ml_section.labelling_rule }}
+    </div>
+
+    {% if report.step6_ml_section.validation_metrics %}
+    <p>Held-out Validation Performance: Accuracy = <strong>{{ report.step6_ml_section.validation_metrics.accuracy }}</strong>, Precision = <strong>{{ report.step6_ml_section.validation_metrics.precision }}</strong>, Recall = <strong>{{ report.step6_ml_section.validation_metrics.recall }}</strong>.</p>
+    {% endif %}
+
+    {% if report.step6_ml_section.regressor_fallback_used %}
+    <div class="callout" style="border-color: #b45309; background: #fffbeb;">
+      {{ report.step6_ml_section.regressor_fallback_reason }}
+    </div>
+    {% endif %}
+
+    <h4>Recommended Untested Vectors</h4>
+    <table>
+      <thead>
+        <tr><th>Rank</th><th>Input Vector</th><th>Method</th><th>P(Rare)</th><th>Target Bin</th><th>Closes Gap?</th></tr>
+      </thead>
+      <tbody>
+        {% for c in report.step6_ml_section.candidates %}
+        <tr>
+          <td>{{ c.rank }}</td>
+          <td><code>{{ c.inputs }}</code></td>
+          <td>{{ c.selection_method }}</td>
+          <td>{{ c.rare_probability if c.rare_probability is not none else 'N/A' }}</td>
+          <td><code>{{ c.actual_bin }}</code></td>
+          <td>{{ 'YES' if c.closes_gap else 'NO' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if report.step6_ml_section.random_baseline %}
+    <div class="callout" style="margin-top: 14px;">
+      <strong>Random-Selection Baseline Comparison:</strong> {{ report.step6_ml_section.random_baseline.comparison_text }}
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Step 7: RTL Simulation Verification -->
+  <div class="section-card">
+    <div class="section-title">7. Hardware Simulation Verification (Icarus Verilog)</div>
+    <p>Status: <strong>{{ report.step7_rtl_verification.status }}</strong> &nbsp;|&nbsp;
+       Results: <strong>{{ report.step7_rtl_verification.pass_count }} passed</strong>, <strong>{{ report.step7_rtl_verification.fail_count }} failed</strong> of {{ report.step7_rtl_verification.total }} tests.</p>
+    {% if report.step7_rtl_verification.verified_closed_bins %}
+    <p style="color: #15803d; font-weight: bold;">Verified Closed Bins: {{ report.step7_rtl_verification.verified_closed_bins | join(', ') }}</p>
+    {% endif %}
+    <h4>Simulator Output</h4>
+    <div class="code-box">{{ report.step7_rtl_verification.simulator_output }}</div>
+  </div>
+
+  <!-- Step 8: Before / After Coverage -->
+  <div class="section-card">
+    <div class="section-title">8. Coverage Closure Impact</div>
+    <div class="meta-grid" style="grid-template-columns: 1fr 1fr;">
+      <div>Baseline Coverage: <span class="stat-badge">{{ report.step8_before_after.coverage_before_pct }}%</span> ({{ report.step8_before_after.bins_hit_before }}/{{ report.step8_before_after.total_bins }} bins)</div>
+      <div>Verified Projected Coverage: <span class="stat-badge" style="color: #15803d;">{{ report.step8_before_after.coverage_after_pct }}%</span> ({{ report.step8_before_after.bins_hit_after }}/{{ report.step8_before_after.total_bins }} bins) [{{ report.step8_before_after.coverage_delta_pct }}% Net Jump]</div>
+    </div>
+  </div>
+
+  <!-- Step 9: Actionable Recommendations -->
+  <div class="section-card">
+    <div class="section-title">9. Actionable Recommendations</div>
+    {% if report.step9_recommendations.recommended_inputs %}
+    <p>Add the following {{ report.step9_recommendations.recommended_inputs | length }} directed stimuli to your verification regression:</p>
+    <table>
+      <thead><tr><th>Rank</th><th>Inputs</th><th>Closes Target Bin</th></tr></thead>
+      <tbody>
+        {% for r in report.step9_recommendations.recommended_inputs %}
+        <tr><td>{{ r.rank }}</td><td><code>{{ r.inputs }}</code></td><td><code>{{ r.target_bin }}</code></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No additional tests needed. Baseline already achieves 100% bin coverage.</p>
+    {% endif %}
+
+    {% if report.step9_recommendations.unreachable_guidance %}
+    <h4>Guidance for Unreachable Bins:</h4>
+    {% for u in report.step9_recommendations.unreachable_guidance %}
+    <p style="font-size: 13px; color: #b45309;">• {{ u.guidance }}</p>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+</body>
+</html>
